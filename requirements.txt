@@ -2,3 +2,4 @@ fastapi        # 軽量なWeb APIを作るためのフレームワーク
 uvicorn        # FastAPIを動かすためのASGIサーバー（実行エンジン）
 pillow         # Pythonで画像を扱うライブラリ（画像の読み込み・変換に使う）
 openai         # GPT-4 Vision APIにアクセスするための公式ライブラリ
+python-multipart
