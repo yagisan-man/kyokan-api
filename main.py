@@ -9,6 +9,10 @@ app = FastAPI()
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+@app.get("/")
+def read_root():
+    return {"message": "API is running"}
+
 def resize_and_encode(file):
     image = Image.open(file.file)
     if image.width > 1024:
