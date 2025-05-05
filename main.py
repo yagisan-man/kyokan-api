@@ -1,3 +1,4 @@
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 from PIL import Image
 import openai
@@ -5,7 +6,16 @@ import base64
 from io import BytesIO
 import os
 
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 本番ではドメイン指定を推奨（例："https://kyokan-checker.com"）
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
