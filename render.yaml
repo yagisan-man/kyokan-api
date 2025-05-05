@@ -1,0 +1,9 @@
+services:
+  - type: web                     # Webサービスとしてデプロイする
+    name: kyokan-api              # サービス名（Render上での識別名）
+    env: python                   # Python環境を使用する
+    buildCommand: "pip install -r requirements.txt"  # このコマンドでライブラリをインストール
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port 10000"  # このコマンドでアプリを起動
+    envVars:
+      - key: OPENAI_API_KEY       # OpenAIのAPIキーを設定（Render上で手動入力）
+        sync: false               # 値はGitHubに保存せず、Render上で個別に入力
