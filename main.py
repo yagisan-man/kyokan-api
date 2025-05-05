@@ -24,7 +24,7 @@ async def analyze(file: UploadFile = File(...)):
     image_data = resize_and_encode(file)
     prompt = "この画像に含まれる数字から、インプレッション数、いいね、リポスト、引用、ブックマーク数を特定して、それらの合計をインプレッション数で割って共感率を出して下さい。"
     response = openai.chat.completions.create(
-        model="gpt-4-vision-preview",
+        model="gpt-4o",
         messages=[
             {"role": "user", "content": [
                 {"type": "text", "text": prompt},
