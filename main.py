@@ -1,12 +1,13 @@
-
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, UploadFile, File
-from PIL import Image
+from pydantic import BaseModel
 from openai import OpenAI
+from PIL import Image
+import io
 import base64
-from io import BytesIO
-import os
 import re
+import os
+import logging
 
 app = FastAPI()
 
@@ -20,94 +21,92 @@ app.add_middleware(
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.get("/")
-def read_root():
-    return {"message": "API is running"}
+SYSTEM_PROMPT = """
+あなたはSNS投稿の反応を分析するアシスタントです。画像から読み取ったX（旧Twitter）の投稿内容に対して、共感度（エンゲージメント率）を判断し、定量的な評価（反応率に応じたコメント）と、定性的な分析（なぜ共感された／されなかったのか）を一言で述べてください。
 
-def resize_and_encode(file):
-    image = Image.open(file.file)
-    if image.width > 1024:
-        ratio = 1024 / image.width
-        image = image.resize((1024, int(image.height * ratio)))
-    buffer = BytesIO()
-    image.convert("RGB").save(buffer, format="JPEG", quality=85)
-    base64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return f"data:image/jpeg;base64,{base64_str}"
+定量的なコメントは以下に基づいて返答してください：
+0%：これは…誰にも共感されていません。
+0.01%〜0.09%：ごく一部だけが反応しました。
+0.1%〜0.49%：少数ながら心に響いた人がいたようです。
+0.5%〜0.99%：一部の人には刺さった投稿です。
+1%〜1.99%：やや共感を得た投稿です。
+2%〜3.99%：一定の共感を集めました。
+4%〜6.99%：かなり共感された投稿です。
+7%〜9.99%：強く共感を呼んでいます。
+10%以上：非常に多くの共感を得た優れた投稿です。
+"""
 
-def get_comment_by_rate(rate):
-    if rate >= 10:
-        return "この投稿は極めて高い共感を得ています。内容が多くの人に深く届いた結果といえるでしょう。"
-    elif rate >= 5:
-        return "相当共感されています。ここまで響く投稿はそう多くありません。"
-    elif rate >= 3:
-        return "多くの人に“わかる”と感じさせた投稿です。"
-    elif rate >= 2:
-        return "一部には刺さっていますが、大多数には届いていません。"
-    elif rate >= 1:
-        return "目には留まったけど、心には届いてないようです。"
-    elif rate >= 0.5:
-        return "“無難”以上、“共鳴”未満。よくある投稿です。"
-    elif rate >= 0.2:
-        return "多くの人がスルーしています。内容の再考を。"
-    elif rate >= 0.1:
-        return "響かない投稿。見られただけで、何も残していません。"
-    else:
-        return "これは…誰にも共感されていません。"
+class AnalyzeResponse(BaseModel):
+    kyokan_rate: float
+    comment: str
+    ai_comment: str
+
+def parse_number(s):
+    s = s.replace(',', '').strip()
+    if '万' in s:
+        return float(s.replace('万', '')) * 10000
+    if '千' in s:
+        return float(s.replace('千', '')) * 1000
+    return float(s)
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
-    image_data = resize_and_encode(file)
+    image_data = await file.read()
+    image = Image.open(io.BytesIO(image_data))
 
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "以下の画像に写っているSNS投稿について、次の2点を回答してください：\n\n1. 投稿に記載されている「いいね数」と「インプレッション数」を教えてください。\n2. 投稿内容について、なぜ共感された（またはされなかった）と思うか、言葉選びや雰囲気、タイミングを踏まえて簡単なコメントを出してください。"
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {"url": image_data}
-                }
-            ]
-        }
-    ]
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+
+    prompt = f"以下の画像はSNS投稿のスクリーンショットです。共感率を算出するために、いいね数・リポスト数・インプレッション数などの数値を抽出してください。その上で、エンゲージメント率（主にいいね数 ÷ インプレッション数）をもとに、定量・定性の2軸でコメントしてください。\n\n---\n画像: data:image/png;base64,{img_str}"
 
     response = client.chat.completions.create(
         model="gpt-4o",
-        messages=messages,
-        max_tokens=300,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
     )
 
     text = response.choices[0].message.content
-
     print("----- GPT出力 -----")
     print(text)
     print("------------------")
 
-    # 数値を抽出（簡易的に正規表現を使う）
-    likes = 0
-    impressions = 0
-    match_likes = re.search(r"(?:いいね|Likes?)[:：]?\s*(\d[\d,]*)", text, re.IGNORECASE)
-    match_impr = re.search(r"(?:インプレッション|Impressions?)[:：]?\s*(\d[\d,]*)", text, re.IGNORECASE)
-    if match_likes:
-        likes = int(match_likes.group(1).replace(",", ""))
-    if match_impr:
-        impressions = int(match_impr.group(1).replace(",", ""))
+    # 数値抽出
+    match_likes = re.search(r"(?:いいね数?|Likes?)[:：]?\s*(\d+(?:\.\d+)?[万千]?)", text)
+    match_impr = re.search(r"(?:インプレッション数?|Impressions?)[:：]?\s*(\d+(?:\.\d+)?[万千]?)", text)
 
-    kyokan_rate = round((likes / impressions) * 100, 2) if impressions > 0 else 0.0
-    comment = get_comment_by_rate(kyokan_rate)
+    likes = parse_number(match_likes.group(1)) if match_likes else 0
+    impressions = parse_number(match_impr.group(1)) if match_impr else 0
 
-    # 内容に対するコメントを抽出（2点目の回答）
-    ai_comment_match = re.search(r"2[\）\.]\s*(.+)", text, re.DOTALL)
-    ai_comment = ai_comment_match.group(1).strip() if ai_comment_match else ""
+    if impressions == 0:
+        kyokan = 0.0
+    else:
+        kyokan = round((likes / impressions) * 100, 2)
 
-    return {
-        "likes": likes,
-        "impressions": impressions,
-        "kyokan_rate": kyokan_rate,
-        "comment": comment,
-        "ai_comment": ai_comment,
-        "raw_text": text,
-    }
+    # 定量コメント生成
+    if kyokan == 0:
+        comment = "これは…誰にも共感されていません。"
+    elif kyokan < 0.1:
+        comment = "ごく一部だけが反応しました。"
+    elif kyokan < 0.5:
+        comment = "少数ながら心に響いた人がいたようです。"
+    elif kyokan < 1:
+        comment = "一部の人には刺さった投稿です。"
+    elif kyokan < 2:
+        comment = "やや共感を得た投稿です。"
+    elif kyokan < 4:
+        comment = "一定の共感を集めました。"
+    elif kyokan < 7:
+        comment = "かなり共感された投稿です。"
+    elif kyokan < 10:
+        comment = "強く共感を呼んでいます。"
+    else:
+        comment = "非常に多くの共感を得た優れた投稿です。"
+
+    return AnalyzeResponse(
+        kyokan_rate=kyokan,
+        comment=comment,
+        ai_comment=text
+    )
