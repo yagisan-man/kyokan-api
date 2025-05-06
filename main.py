@@ -69,7 +69,7 @@ async def analyze(file: UploadFile = File(...)):
     ]
 
     response = openai.ChatCompletion.create(
-        model="gpt-4-vision-preview",
+        model="gpt-4o",
         messages=messages,
         max_tokens=300,
     )
