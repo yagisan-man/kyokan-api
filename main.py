@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -7,7 +7,6 @@ import io
 import base64
 import re
 import os
-import logging
 
 app = FastAPI()
 
@@ -50,10 +49,19 @@ def parse_number(s):
     return float(s)
 
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
-    image_data = await file.read()
-    image = Image.open(io.BytesIO(image_data))
+async def analyze_image(file: UploadFile = File(...)):
+    contents = await file.read()
 
+    # サイズ制限（2MB）
+    MAX_SIZE = 2 * 1024 * 1024
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="画像サイズが大きすぎます（最大2MBまで対応しています）"
+        )
+
+    # 画像処理
+    image = Image.open(io.BytesIO(contents))
     buffered = io.BytesIO()
     image.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
