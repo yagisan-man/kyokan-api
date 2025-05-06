@@ -100,4 +100,4 @@ return {
         "kyokan_rate": kyokan_rate,
         "comment": comment,
         "raw_text": text,
-    }
+}
