@@ -154,8 +154,8 @@ async def analyze_image(file: UploadFile = File(...)):
     print(text)
     print("------------------")
 
-    match_likes = re.search(r"(?:いいね数?|Likes?)[:：]?\s*(\d+(?:\.\d+)?[万千]?)", text)
-    match_impr = re.search(r"(?:インプレッション数?|Impressions?)[:：]?\s*(\d+(?:\.\d+)?[万千]?)", text)
+    match_likes = re.search(r"(?:イイね数|いいね数|Likes?)[:：]?\s*約?(\d{1,3}(?:,\d{3})*)", text)
+    match_impr = re.search(r"(?:インプレッション数|Impressions?)[:：]?\s*約?(\d{1,3}(?:,\d{3})*)", text)
 
     likes = parse_number(match_likes.group(1)) if match_likes else 0
     impressions = parse_number(match_impr.group(1)) if match_impr else 0
