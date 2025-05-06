@@ -82,6 +82,10 @@ async def analyze(file: UploadFile = File(...)):
 
     text = response.choices[0].message.content
 
+    print("----- GPT出力 -----")
+    print(text)
+    print("------------------")
+
     # 数値を抽出（簡易的に正規表現を使う）
     likes = 0
     impressions = 0
