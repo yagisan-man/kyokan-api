@@ -2,7 +2,7 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 from PIL import Image
-import openai
+from openai import OpenAI
 import base64
 from io import BytesIO
 import os
@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.get("/")
 def read_root():
@@ -62,19 +62,25 @@ async def analyze(file: UploadFile = File(...)):
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": "以下の画像に写っているSNS投稿について、次の2点を回答してください：\n\n1. 投稿に記載されている「いいね数」と「インプレッション数」を教えてください。\n2. 投稿内容について、なぜ共感された（またはされなかった）と思うか、言葉選びや雰囲気、タイミングを踏まえて簡単なコメントを出してください。"},
-                {"type": "image_url", "image_url": {"url": image_data}},
-            ],
+                {
+                    "type": "text",
+                    "text": "以下の画像に写っているSNS投稿について、次の2点を回答してください：\n\n1. 投稿に記載されている「いいね数」と「インプレッション数」を教えてください。\n2. 投稿内容について、なぜ共感された（またはされなかった）と思うか、言葉選びや雰囲気、タイミングを踏まえて簡単なコメントを出してください。"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": image_data}
+                }
+            ]
         }
     ]
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4o",
         messages=messages,
         max_tokens=300,
     )
 
-    text = response.choices[0].message["content"]
+    text = response.choices[0].message.content
 
     # 数値を抽出（簡易的に正規表現を使う）
     likes = 0
