@@ -89,15 +89,15 @@ async def analyze(file: UploadFile = File(...)):
     kyokan_rate = round((likes / impressions) * 100, 2) if impressions > 0 else 0.0
     comment = get_comment_by_rate(kyokan_rate)
 
-    
     # 内容に対するコメントを抽出（2点目の回答）
     ai_comment_match = re.search(r"2[\）\.]\s*(.+)", text, re.DOTALL)
     ai_comment = ai_comment_match.group(1).strip() if ai_comment_match else ""
 
-return {
+    return {
         "likes": likes,
         "impressions": impressions,
         "kyokan_rate": kyokan_rate,
         "comment": comment,
+        "ai_comment": ai_comment,
         "raw_text": text,
-}
+    }
