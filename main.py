@@ -58,13 +58,25 @@ async def analyze(file: UploadFile = File(...)):
     image.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
 
-    prompt = f"以下の画像はSNS投稿のスクリーンショットです。共感率を算出するために、いいね数・リポスト数・インプレッション数などの数値を抽出してください。その上で、エンゲージメント率（主にいいね数 ÷ インプレッション数）をもとに、定量・定性の2軸でコメントしてください。\n\n---\n画像: data:image/png;base64,{img_str}"
-
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{img_str}"
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": "この画像に含まれるSNS投稿の反応数（インプレッション・いいね・リポストなど）を読み取り、いいね数とインプレッション数から共感率を計算してください。また、反応率の評価と簡潔なコメントを含めてください。"
+                    }
+                ]
+            }
         ]
     )
 
@@ -73,7 +85,6 @@ async def analyze(file: UploadFile = File(...)):
     print(text)
     print("------------------")
 
-    # 数値抽出
     match_likes = re.search(r"(?:いいね数?|Likes?)[:：]?\s*(\d+(?:\.\d+)?[万千]?)", text)
     match_impr = re.search(r"(?:インプレッション数?|Impressions?)[:：]?\s*(\d+(?:\.\d+)?[万千]?)", text)
 
@@ -85,7 +96,6 @@ async def analyze(file: UploadFile = File(...)):
     else:
         kyokan = round((likes / impressions) * 100, 2)
 
-    # 定量コメント生成
     if kyokan == 0:
         comment = "これは…誰にも共感されていません。"
     elif kyokan < 0.1:
