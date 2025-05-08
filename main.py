@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,6 +15,7 @@ RESULT_DIR = "results"
 os.makedirs(RESULT_DIR, exist_ok=True)
 
 app = FastAPI()
+app.mount("/results", StaticFiles(directory="results"), name="results")
 
 app.add_middleware(
     CORSMiddleware,
