@@ -7,6 +7,11 @@ import io
 import base64
 import re
 import os
+import uuid
+import json
+
+RESULT_DIR = "results"
+os.makedirs(RESULT_DIR, exist_ok=True)
 
 app = FastAPI()
 
@@ -32,7 +37,7 @@ SYSTEM_PROMPT = """
 以下の形式で必ず出力してください：
 
 評価：
-インプレッション数:約○○ , イイね数:約○○ 
+インプレッション数:約○○ , イイね数:約○○ を出力形式ルールに沿って表記
 反応率に基づく短文評価のみ。数値は含めない
 （一行空ける）
 投稿の内容・文調などから導かれる分析コメント。定性的な理由付け
@@ -100,6 +105,7 @@ class AnalyzeResponse(BaseModel):
     kyokan_rate: float
     comment: str
     ai_comment: str
+    result_id: str  # ← 新たに追加
 
 def parse_number(s):
     s = s.replace(',', '').strip()
@@ -184,8 +190,21 @@ async def analyze_image(file: UploadFile = File(...)):
     else:
         comment = "非常に多くの共感を得た優れた投稿です。"
 
+# 解析結果を保存する
+    result_id = str(uuid.uuid4())
+    result_data = {
+        "rate": f"{kyokan}%",
+        "comment": comment,
+        "ai_comment": text.strip(),
+        "image_base64": f"data:image/png;base64,{img_str}"
+    }
+    filename = os.path.join(RESULT_DIR, f"result_{result_id}.json")
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(result_data, f, ensure_ascii=False, indent=2)
+
     return AnalyzeResponse(
         kyokan_rate=kyokan,
         comment=comment,
-        ai_comment=text
+        ai_comment=text,
+        result_id=result_id
     )
