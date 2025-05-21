@@ -193,6 +193,7 @@ async def analyze_image(file: UploadFile = File(...)):
 # 解析結果を保存する
     result_id = str(uuid.uuid4())
     result_data = {
+        "id": result_id, 
         "rate": f"{kyokan}%",
         "comment": comment,
         "ai_comment": text.strip(),
