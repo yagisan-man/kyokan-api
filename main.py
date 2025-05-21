@@ -3,12 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 from PIL import Image
+from fastapi.staticfiles import StaticFiles
 import io
 import base64
 import re
 import os
 import uuid
 import json
+
+app.mount("/results", StaticFiles(directory="results"), name="results")
 
 RESULT_DIR = "results"
 os.makedirs(RESULT_DIR, exist_ok=True)
