@@ -1,10 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from PIL import Image
-from datetime import datetime
 import io
 import base64
 import re
@@ -198,8 +196,7 @@ async def analyze_image(file: UploadFile = File(...)):
         "rate": f"{kyokan}%",
         "comment": comment,
         "ai_comment": text.strip(),
-        "image_base64": f"data:image/png;base64,{img_str}",
-        "timestamp": datetime.utcnow().isoformat()
+        "image_base64": f"data:image/png;base64,{img_str}"
     }
     filename = os.path.join(RESULT_DIR, f"result_{result_id}.json")
     with open(filename, "w", encoding="utf-8") as f:
@@ -211,4 +208,3 @@ async def analyze_image(file: UploadFile = File(...)):
         ai_comment=text,
         result_id=result_id
     )
-
