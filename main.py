@@ -209,3 +209,7 @@ async def analyze_image(file: UploadFile = File(...)):
         ai_comment=text,
         result_id=result_id
     )
+
+@app.get("/debug/files")
+def list_files():
+    return os.listdir("results")
