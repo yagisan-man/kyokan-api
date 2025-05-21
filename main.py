@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from PIL import Image
@@ -241,3 +242,15 @@ def get_weekly_ranking(limit: int = 10):
 
     ranking_data.sort(key=lambda x: x["rate"], reverse=True)
     return JSONResponse(content=ranking_data[:limit])
+
+@app.get("/debug/files")
+def list_files():
+    return os.listdir(RESULT_DIR)
+
+@app.get("/debug/file/{filename}")
+def show_file(filename: str):
+    try:
+        with open(os.path.join(RESULT_DIR, filename), "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        return {"error": str(e)}
