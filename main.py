@@ -197,6 +197,7 @@ async def analyze_image(file: UploadFile = File(...)):
         "comment": comment,
         "ai_comment": text.strip(),
         "image_base64": f"data:image/png;base64,{img_str}"
+        "timestamp": datetime.utcnow().isoformat()
     }
     filename = os.path.join(RESULT_DIR, f"result_{result_id}.json")
     with open(filename, "w", encoding="utf-8") as f:
