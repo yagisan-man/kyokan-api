@@ -11,12 +11,13 @@ import os
 import uuid
 import json
 
-app.mount("/results", StaticFiles(directory="results"), name="results")
+
 
 RESULT_DIR = "results"
 os.makedirs(RESULT_DIR, exist_ok=True)
 
 app = FastAPI()
+app.mount("/results", StaticFiles(directory="results"), name="results")
 
 app.add_middleware(
     CORSMiddleware,
