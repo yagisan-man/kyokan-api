@@ -1,4 +1,3 @@
-from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,7 +14,6 @@ RESULT_DIR = "results"
 os.makedirs(RESULT_DIR, exist_ok=True)
 
 app = FastAPI()
-app.mount("/results", StaticFiles(directory="results"), name="results")
 
 app.add_middleware(
     CORSMiddleware,
@@ -210,3 +208,34 @@ async def analyze_image(file: UploadFile = File(...)):
         ai_comment=text,
         result_id=result_id
     )
+
+@app.get("/ranking")
+def get_weekly_ranking(limit: int = 10):
+    now = datetime.utcnow()
+    one_week_ago = now - timedelta(days=7)
+    ranking_data = []
+
+    for filename in os.listdir(RESULT_DIR):
+        if not filename.endswith(".json"):
+            continue
+
+        filepath = os.path.join(RESULT_DIR, filename)
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            timestamp = datetime.fromisoformat(data.get("timestamp"))
+            if timestamp >= one_week_ago:
+                ranking_data.append({
+                    "id": data.get("id"),
+                    "rate": data.get("rate"),
+                    "comment": data.get("comment"),
+                    "ai_comment": data.get("ai_comment"),
+                    "image_base64": data.get("image_base64"),
+                    "timestamp": timestamp.isoformat()
+                })
+        except Exception:
+            continue
+
+    ranking_data.sort(key=lambda x: x["rate"], reverse=True)
+    return JSONResponse(content=ranking_data[:limit])
