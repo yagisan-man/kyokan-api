@@ -149,11 +149,21 @@ class AnalyzeResponse(BaseModel):
 
 def parse_number(s):
     s = s.replace(',', '').strip()
-    if '万' in s:
-        return float(s.replace('万', '')) * 10000
-    if '千' in s:
-        return float(s.replace('千', '')) * 1000
-    return float(s)
+
+    # 正規表現で数値＋単位を抽出
+    match = re.match(r"([\d\.]+)(万|千)?", s)
+    if not match:
+        return 0
+
+    num = float(match.group(1))
+    unit = match.group(2)
+
+    if unit == "万":
+        return num * 10000
+    elif unit == "千":
+        return num * 1000
+    else:
+        return num
 
 @app.post("/analyze")
 async def analyze_image(file: UploadFile = File(...)):
