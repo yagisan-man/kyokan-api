@@ -221,24 +221,32 @@ async def analyze_image(file: UploadFile = File(...)):
     else:
         kyokan = round((likes / impressions) * 100, 2)
 
-    if kyokan == 0:
-        comment = "これは…誰にも共感されていません。"
-    elif kyokan < 0.1:
-        comment = "ごく一部だけが反応しました。"
-    elif kyokan < 0.5:
-        comment = "少数ながら心に響いた人がいたようです。"
-    elif kyokan < 1:
-        comment = "一部の人には刺さった投稿です。"
-    elif kyokan < 2:
-        comment = "やや共感を得た投稿です。"
-    elif kyokan < 4:
-        comment = "一定の共感を集めました。"
-    elif kyokan < 7:
-        comment = "かなり共感された投稿です。"
-    elif kyokan < 10:
-        comment = "強く共感を呼んでいます。"
-    else:
-        comment = "非常に多くの共感を得た優れた投稿です。"
+    def get_kyokan_comment(rate, impressions):
+        if impressions < 10000:
+            return "投稿の表示数が限られていたため、反応の少なさについては一概に評価できません。"
+        elif impressions < 100000:
+            if rate < 0.1:
+                return "一定数の人に届いた投稿ですが、共感にはつながらなかったようです。"
+            elif rate < 0.5:
+                return "内容や文調に、広く訴えかける要素が乏しかった可能性があります。"
+            else:
+                return "一定の共感を集めた投稿です。"
+        elif impressions < 1000000:
+            if rate < 0.1:
+                return "多くの人に読まれた形跡はありますが、共感はほとんど得られていません。"
+            elif rate < 0.5:
+                return "内容や訴求の弱さが影響した可能性があります。"
+            else:
+                return "一定の関心を集めた投稿です。"
+        else:
+            if rate < 0.1:
+                return "非常に多くの人に目に触れたにも関わらず、共感はほぼ得られていません。数字だけを追った投稿が、誰にも刺さらなかったことを物語っています。"
+            elif rate < 0.5:
+                return "広く届いたものの、内容の響きには課題があるようです。"
+            else:
+                return "非常に多くの人に届き、一定の関心を集めました。"
+
+    comment = get_kyokan_comment(kyokan, impressions)
 
 # 解析結果を保存する
     result_id = str(uuid.uuid4())
